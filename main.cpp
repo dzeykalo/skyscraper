@@ -10,30 +10,21 @@ int main(int argc, char* argv[])
   std::array<std::array<std::vector<int>,kBuildingHeight>,kBuildingHeight> Array;
   std::map<int, std::vector<int>> Visible;
   InitArray(Array, argv[1], Visible);
-  // SearchUnique(Array);
-  // SearchDuplicate(Array);
-  // SearchDuplicate(Array);
-  // SearchSingleSolution(Array);
-  // SearchUnique(Array);
-  // SearchDuplicate(Array);
-  // SearchDuplicate(Array);
-  // CheckTwo(Array);
-  // SearchUnique(Array);
-  // SearchDuplicate(Array);
-  // SearchDuplicate(Array);
-  // CheckThree(Array);
-  // CheckSix(Array, Visible);
-  // SearchDuplicate(Array);
-  // SearchDuplicate(Array);
+  Search(Array);
+  SearchSingleSolution(Array, Visible);
+  RuleForVisibleFour(Array, Visible);
+  RuleForVisibleThree_0(Array, Visible);
+  GetElement(Array);
+  Search(Array);
 
-  // CheckFour(Array);
-  // SearchDuplicate(Array);
-  // CheckFifth(Array);
-  // SearchDuplicate(Array);
-  // SearchDuplicate(Array);
-  // SearchDuplicate(Array);
-  // SearchDuplicate(Array);
-
+  RuleForVisibleTwo_0(Array, Visible);
+  Search(Array);
+  RuleForVisibleThree_1(Array, Visible);
+  RuleForVisibleTwo_1(Array, Visible);
+  Search(Array);
+  RuleForVisibleThree_2(Array, Visible);
+  Search(Array);
+  
 
   for ( auto &m:Array)
   {
@@ -45,7 +36,7 @@ int main(int argc, char* argv[])
     }
     std::cout << std::endl;
   }
- 
+
   return 0;
 }
 

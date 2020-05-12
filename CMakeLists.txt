@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 project(skyscraper VERSION 0.1.0)
 
-add_executable(skyscraper main.cpp lib.h)
+add_executable(skyscraper main.cpp lib.h rules.h)
 
 set_target_properties(
   skyscraper PROPERTIES

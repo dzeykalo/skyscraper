@@ -20,44 +20,55 @@ bool operator == (const std::vector<int> &v1, const std::vector<int> &v2)
   return std::equal(v1.begin(), v1.end(), v2.begin());
 }
 
+bool operator == (const std::vector<int> &v, int value)
+{
+  auto result = std::find(v.begin(), v.end(), value);
+  if (result != v.end())
+    return true;
+  return false;
+}
+
 std::vector<int> GetOptions(int val)
 {
-  std::cout << "val = " << val << std::endl;
   if (val == 1)
     return {kBuildingHeight};
+  else if (val == 0)
+    return {1,2,3,4,5,6};
 
   std::vector<int> v;
-  int tmp = kBuildingHeight - val + 1;
-  for (int i = 1; i <= tmp; ++i)
+  int max_options = kBuildingHeight - val + 1;
+  for (int i = 1; i <= max_options; ++i)
     v.push_back(i);
   return v;
 }
 
-std::vector<int> GetUnique(std::vector<int> v, int val)
+void Options(std::vector<int> &v)
 {
-  auto tmp = GetOptions(val);
-  std::vector<int> ret;
-  std::set_intersection(v.begin(), v.end(), tmp.begin(), tmp.end(), std::back_inserter(ret));
-  return ret;
+  if (!v.empty())
+  {
+    if(v.size() == 1)
+      v = GetOptions(v.back());
+    else
+      v = GetOptions(std::max(v.front(),v.back()));
+  }
+  else
+    v = {1,2,3,4,5,6};
 }
 
 void InitArray(two_array_vector &array, const char* input_data, std::map<int, std::vector<int>> &visible)
 {
-  for ( auto &i:array)
-    i.fill({1,2,3,4,5,6});
-
-  int m = 0; int n = 1;
+  int m = 0; int n = 0;
   bool back = false;
   int direction = 1; // 1 - down; 2 - left; 3- up; 4- right;
-  for(uint32_t i = 2; i < kInputLength; i+=2)
+  for(uint32_t i = 0; i < kInputLength; i+=2)
   {
-    array[m][n] = GetOptions(input_data[i]-'0');
+    array[m][n].push_back(input_data[i]-'0');
     visible[input_data[i]-'0'].push_back((m<<16)+(n<<8)+direction);
-    if ((m==0 || m==kBuildingHeight-1) && (n==0 || n==kBuildingHeight-1))
+    if ((m==0 || m==kBuildingHeight-1) && (n==0 || n==kBuildingHeight-1) && !(m==n && m==0))
     {
-      i+=2; direction++;
-      array[m][n] = GetUnique(array[m][n], input_data[i]-'0');
-      visible[input_data[i]-'0'].push_back((m<<16)+(n<<8)+direction);
+        i+=2; direction++; 
+        array[m][n].push_back(input_data[i]-'0');
+        visible[input_data[i]-'0'].push_back((m<<16)+(n<<8)+direction);
     }
     if (n!=kBuildingHeight-1 && !back) n++;
     else if (m!=kBuildingHeight-1 && !back) m++;
@@ -65,35 +76,31 @@ void InitArray(two_array_vector &array, const char* input_data, std::map<int, st
     else if (n!=0) n--;
     else if (m!=0) m--;
   }
-  std::cout << array[0][0].back() << std::endl;
-  // array[0][0] = GetUnique(array[0][0], input_data[0]-'0');
-  // visible[input_data[0]-'0'].push_back(1);
+
+  for ( auto &i:array)
+  {
+    for ( auto &v:i)
+      Options(v);
+  }
+  
 }
 
-bool CheckRowColumn(two_array_vector &array, int m, int n, int duplicate_value)
+bool CheckRowColumn(two_array_vector &array, int index, int duplicate_value, bool column)
 {
+  std::vector<int> v{duplicate_value};
   for(int i = 0; i < kBuildingHeight; ++i)
   {
-    if (i != n)
-    {
-      auto result = std::find(array[m][i].begin(), array[m][i].end(), duplicate_value);
-      if (result != array[m][i].end())
+    int m = index; int n = i;
+    if (column) 
+      { m = i; n = index; }
+
+    if (array[m][n] == v)
         return true;
-    }
-  }
-  for(int i = 0; i < kBuildingHeight; ++i)
-  {
-    if (i != m)
-    {
-      auto result = std::find(array[i][n].begin(), array[i][n].end(), duplicate_value);
-      if (result != array[i][n].end())
-        return true;
-    }
   }
   return false;
 }
 
-void ReplaceUnique(two_array_vector &array, std::array<int,kBuildingHeight> &repeat_count, uint32_t index, bool column)
+void ReplaceUnique(two_array_vector &array, std::array<int,kBuildingHeight> &repeat_count, int index, bool column, bool &search)
 {
   for (int i = 0; i < kBuildingHeight; ++i)
   {
@@ -101,12 +108,14 @@ void ReplaceUnique(two_array_vector &array, std::array<int,kBuildingHeight> &rep
     {
       for(uint32_t j = 0; j < kBuildingHeight; ++j)
       {
-        uint32_t m = index; uint32_t n = j;
+        int m = index; int n = j;
         if (column) 
           { m = j; n = index; }
-        auto result = std::find(array[m][n].begin(), array[m][n].end(), i+1);
-        if (result != array[m][n].end() && !CheckRowColumn(array, m, n, i+1))
+        if (array[m][n] == i+1 && !CheckRowColumn(array, index, i+1, column))
+        {
           array[m][n] = {i+1};
+          search = true;
+        }
       }
     }
   }
@@ -128,81 +137,98 @@ void RepeatCount(two_array_vector &array, std::array<int,kBuildingHeight> &repea
   }
 }
 
-void SearchUnique(two_array_vector &array)
+void SearchUnique(two_array_vector &array, bool &search)
 {
   std::array<int,kBuildingHeight> repeat_count;
   for(uint32_t m = 0; m < kBuildingHeight; ++m)
   {
     RepeatCount(array, repeat_count, m, false);
-    ReplaceUnique(array, repeat_count, m, false);
+    ReplaceUnique(array, repeat_count, m, false, search);
   }
 
   for(uint32_t n = 0; n < kBuildingHeight; ++n)
   {
     RepeatCount(array, repeat_count, n, true);
-    ReplaceUnique(array, repeat_count, n, true);
+    ReplaceUnique(array, repeat_count, n, true, search);
   }
 }
 
-void RemoveDuplicate(two_array_vector &array, uint32_t m, uint32_t n, int duplicate_value)
+void RemoveDuplicate(two_array_vector &array, uint32_t m, uint32_t n, int duplicate_value, bool &search)
 {
   for(uint32_t i = 0; i < kBuildingHeight; ++i)
   {
     if (array[m][i].size() > 1)
-      array[m][i].erase(std::remove(array[m][i].begin(), array[m][i].end(), duplicate_value), array[m][i].end());
+    {
+      auto itr = std::remove(array[m][i].begin(), array[m][i].end(), duplicate_value);
+      if (itr != array[m][i].end())
+      {
+        search = true;
+        array[m][i].erase(itr, array[m][i].end());
+      }
+    }
   }
     
   for(uint32_t i = 0; i < kBuildingHeight; ++i)
   {
     if (array[i][n].size() > 1)
-      array[i][n].erase(std::remove(array[i][n].begin(), array[i][n].end(), duplicate_value), array[i][n].end()); 
-  }
-}
-
-void SearchDuplicate(two_array_vector &array)
-{
-  for(uint32_t m = 0; m < kBuildingHeight; ++m)
-  {
-    for(uint32_t n = 0; n < kBuildingHeight; ++n)
     {
-      if (array[m][n].size() == 1)
+      auto itr = std::remove(array[i][n].begin(), array[i][n].end(), duplicate_value);
+      if (itr != array[i][n].end()) 
       {
-        RemoveDuplicate(array, m, n, array[m][n].back());
+        search = true;
+        array[i][n].erase(itr, array[i][n].end());
       }
     }
   }
 }
 
-void SearchSingleSolution(two_array_vector &array)
+void SearchDuplicate(two_array_vector &array)
 {
-  std::vector<int> v1{1};
-  std::vector<int> v2{kBuildingHeight};
-  for(uint32_t m = 0; m < kBuildingHeight; ++m)
+  bool search = true;
+  while (search)
   {
-    if (array[m][0] == v1 && array[m][kBuildingHeight-1] == v2)
+    search = false;
+    for(uint32_t m = 0; m < kBuildingHeight; ++m)
     {
-      for(int n = 1; n < kBuildingHeight-1; ++n)
-        array[m][n] = {n+1};
-    }
-    else if (array[m][0] == v2 && array[m][kBuildingHeight-1] == v1)
-    {
-      for(int n = kBuildingHeight-2; n > 0; --n)
-        array[m][n] = {kBuildingHeight-n};
-    }
-  }
-  for(uint32_t n = 0; n < kBuildingHeight; ++n)
-  {
-    if (array[0][n] == v1 && array[kBuildingHeight-1][n] == v2)
-    {
-      for(int m = 1; m < kBuildingHeight-1; ++m)
-        array[m][n] = {m+1};
-    }
-    else if (array[0][n] == v2 && array[kBuildingHeight-1][n] == v1)
-    {
-      for(int m = kBuildingHeight-2; m > 0; --m)
-        array[m][n] = {kBuildingHeight-m};
+      for(uint32_t n = 0; n < kBuildingHeight; ++n)
+      {
+        if (array[m][n].size() == 1)
+        {
+          RemoveDuplicate(array, m, n, array[m][n].back(), search);
+        }
+      }
     }
   }
 }
 
+void Search(two_array_vector &array)
+{
+  bool search = true;
+  while (search)
+  {
+    search = false;
+    SearchDuplicate(array);
+    SearchUnique(array, search);
+  }
+}
 
+void GetElement(two_array_vector &array)
+{
+  char answer;
+  std::cout << "Are there any famous skyscrapers in grid (y/n)? "; std::cin >> answer;
+  if(answer != 'y')
+    return;
+  std::cout << "How many elements (1..6)? "; std::cin >> answer;
+
+  int max_elements = answer -'0';
+  if(max_elements <= 0 || max_elements > 7)
+    return;
+
+  std::string imput;
+  std::cout << "Example input (1..6). [1][2]=3 enter as 123" << std::endl;
+  for(int i = 0; i < max_elements; ++i)
+  {
+    std::cout << "Element " << i+1 << ": "; std::cin >> imput;
+    array[(imput[0] - '0')-1][(imput[1] - '0')-1] = {imput[2] - '0'};
+  }
+}
